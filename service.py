@@ -40,7 +40,7 @@ class Demo(object):
 
 
 if __name__ == "__main__":
-    broker = "127.0.0.1"
+    broker = "192.168.1.51"
     port = 1883
     topic = "/python/mqtt"
     client_id = f"python-mqtt-{random.randint(0, 1000)}"

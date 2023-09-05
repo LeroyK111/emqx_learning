@@ -24,7 +24,8 @@ import time
 
 class Demo(object):
     def __init__(self, host, port, topic, client_id) -> None:
-        self.handClient = mqtt_client.Client(client_id=client_id)
+        # 创建实例
+        self.handClient = mqtt_client.Client(client_id=client_id, clean_session=False)
         self.handClient.connect(host, port)
         # 失败回调
         self.handClient.on_connect = self.on_connect
@@ -55,7 +56,7 @@ class Demo(object):
 
 
 if __name__ == "__main__":
-    broker = "127.0.0.1"
+    broker = "192.168.1.51"
     port = 1883
     topic = "/python/mqtt"
     client_id = f"python-mqtt-{random.randint(0, 1000)}"
