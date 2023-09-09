@@ -29,7 +29,7 @@ class Demo(object):
         self.host = host
         self.port = port
         # 接受参数，初始化链接, 我们选择mqtt5做为常用协议。
-        self.handClient = mqtt_client.Client(client_id=client_id, protocol=MQTTv311, transport="tcp")
+        self.handClient = mqtt_client.Client(client_id=client_id, protocol=MQTTv311, transport="tcp", clean_session=False)
         # 监听订阅是否成功，也受到 connect_async 影响
         # self.handClient.on_subscribe = self.on_subscribe
         # !存在bug，订阅消息是阻塞状态，如果你
@@ -48,7 +48,7 @@ class Demo(object):
         if rc == 0:
             print("链接状态", connack_string(rc))
             # 异步则放到这里订阅。
-            self.handClient.subscribe(kwargs['topic'])
+            self.handClient.subscribe(kwargs["topic"], qos=1)
         else:
             print("Failed to connect, return code %d\n", error_string(rc))
 
@@ -104,21 +104,19 @@ class Demo(object):
 
         subscribe.callback(on_message_print, topic, qos=0, userdata=None, hostname=self.host, port=self.port, client_id=self.client_id, keepalive=60, will=None, auth=None, tls=None, protocol=MQTTv311)
 
+    def __del__(self):
+        self.handClient.disconnect()
+
 
 if __name__ == "__main__":
     # 客户端id
-    client_id = "receive"
+    client_id = "getGame"
     host = "localhost"
     port = 1883
     try:
         D = Demo(client_id, host, port)
         # 接受消息
-        D.receive_message("retain")
-        # 魔改的话，这两个好下手
-        # 独立单条订阅
-        # D.single_receive_message("retain")
-        # 独立回调订阅
-        # D.callbackMessage("retain")
+        D.receive_message("clean_session_false")
     except Exception as identifier:
         print(identifier)
     except KeyboardInterrupt:
