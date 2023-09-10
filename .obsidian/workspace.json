@@ -149,6 +149,7 @@
   },
   "active": "731fd1df3b6eea67",
   "lastOpenFiles": [
+    "ekuiper用法/docker-compose.yaml",
     "ekuiper用法",
     "readme.assets/Pasted image 20230911004519.png",
     "readme.assets/Pasted image 20230911004425.png",
@@ -167,7 +168,6 @@
     "advance/保留消息client.py",
     "readme.assets/Pasted image 20230910195246.png",
     "introduction/demo.py",
-    "introduction/共享订阅发送端.py.9c323778d8e0fd95215c06ab0753d5a2.tmp",
     "readme.assets/Pasted image 20230910181206.png",
     "readme.assets/Pasted image 20230910181149.png",
     "README.md"

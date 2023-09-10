@@ -782,6 +782,40 @@ EMQX 开源版中仅支持 MQTT 桥接 和 HTTP Server。
 #### 使用 ekuiper 作为mqtt数据桥接
 
 
+MQTT_SOURCE__DEFAULT__SERVER是你的emqx地址。
+创建 `docker-compose.yaml` 文件。
+```shell
+version: '3.4'
+
+services:
+    manager:
+       image: emqx/ekuiper-manager:x.x.x
+       container_name: ekuiper-manager
+       ports:
+       - "9082:9082"
+       restart: unless-stopped
+       environment:
+         # 内部网址
+         DEFAULT_EKUIPER_ENDPOINT: "http://ekuiper:9081"
+    ekuiper:
+       image: lfedge/ekuiper:x.x.x
+       ports:
+         - "9081:9081"
+         - "127.0.0.1:20498:20498"
+       container_name: ekuiper
+       hostname: ekuiper
+       restart: unless-stopped
+       user: root
+       volumes:
+         - /tmp/data:/kuiper/data
+         - /tmp/log:/kuiper/log
+       environment:
+         MQTT_SOURCE__DEFAULT__SERVER: "tcp://localhost:1883"
+         KUIPER__BASIC__CONSOLELOG: "true"
+         KUIPER__BASIC__IGNORECASE: "false"
+
+```
+
 
 
 ### 管理员指南
