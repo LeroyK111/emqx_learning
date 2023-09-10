@@ -10,7 +10,6 @@ from paho.mqtt import client as mqtt_client
 import random
 
 
-
 class Demo(object):
     def __init__(self, host, port, topic, client_id) -> None:
         self.handClient = mqtt_client.Client(client_id=client_id)
@@ -42,7 +41,8 @@ class Demo(object):
 if __name__ == "__main__":
     broker = "192.168.1.51"
     port = 1883
-    topic = "/python/mqtt"
+    # topic = "/python/mqtt"
+    topic = "retain"
     client_id = f"python-mqtt-{random.randint(0, 1000)}"
     try:
         D = Demo(broker, port, topic, client_id)

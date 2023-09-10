@@ -43,7 +43,7 @@ class Demo(object):
         # 循环发送消息
         msg_count = 0
         while True:
-            # time.sleep(0.1)
+            time.sleep(1)
             msg = f"messages: {msg_count}"
             result = self.handClient.publish(self.topic, msg)
             # result: [0, 1]
