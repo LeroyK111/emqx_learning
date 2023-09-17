@@ -287,11 +287,6 @@ web端：http://www.emqx.io/online-mqtt-client#/recent_connections
 ![](readme.assets/Pasted%20image%2020230905130256.png)
 ![](readme.assets/Pasted%20image%2020230905131959.png)
 剩下的就随便玩吧。
-#### ekuiper流处理器
-会使用 ekuiper 作为流数据处理，过滤筛选，组合排列，读写存储数据。
-```shell
-$ docker pull lfedge/ekuiper
-```
 
 开源版本不支持数据持久化。需要自己写数据库。
 
@@ -779,26 +774,29 @@ EMQX 开源版中仅支持 MQTT 桥接 和 HTTP Server。
 
 ![](readme.assets/Pasted%20image%2020230911004519.png)
 
-#### 使用 ekuiper 作为mqtt数据桥接
 
+#### 使用 ekuiper 作为mqtt数据桥接
+如果是工业互联网数据读写采集，那还需要一些特殊的网关（很多时候需要自己写插件）
+![](readme.assets/Pasted%20image%2020230913103254.png)
 
 MQTT_SOURCE__DEFAULT__SERVER是你的emqx地址。
 创建 `docker-compose.yaml` 文件。
-```shell
+##### 入门配置
+```yaml
 version: '3.4'
 
 services:
     manager:
-       image: emqx/ekuiper-manager:x.x.x
+       image: emqx/ekuiper-manager:latest
        container_name: ekuiper-manager
        ports:
        - "9082:9082"
        restart: unless-stopped
        environment:
          # 内部网址
-         DEFAULT_EKUIPER_ENDPOINT: "http://ekuiper:9081"
+         DEFAULT_EKUIPER_ENDPOINT: "http://localhost:9081"
     ekuiper:
-       image: lfedge/ekuiper:x.x.x
+       image: lfedge/ekuiper:latest
        ports:
          - "9081:9081"
          - "127.0.0.1:20498:20498"
@@ -815,6 +813,537 @@ services:
          KUIPER__BASIC__IGNORECASE: "false"
 
 ```
+
+##### 进阶配置
+这里我们使用进阶配置。
+```yaml
+version: "3.4"
+
+# manager 管理界面
+
+# ekuiper 边缘计算服务
+
+# neuron 工业协议网关，就是没有can
+
+services:
+
+  # 管理界面
+
+  manager:
+
+    image: emqx/ekuiper-manager:latest
+
+    # 容器名
+
+    container_name: ekuiper-manager
+
+    # 映射端口
+
+    ports:
+
+      - "9082:9082"
+
+    # 启动方式：除非手动停止
+
+    restart: unless-stopped
+
+    environment:
+
+      # 其中，DEFAULT_EKUIPER_ENDPOINT 可用于指定默认管理的 eKuiper 地址，此处应设置成实际的 eKuiper 所在机器的 ip 。
+
+      DEFAULT_EKUIPER_ENDPOINT: "http://localhost:9081"
+
+  # 服务
+
+  ekuiper:
+
+    image: lfedge/ekuiper:latest
+
+    ports:
+
+      - "9081:9081"
+
+      - "127.0.0.1:20498:20498"
+
+    container_name: ekuiper
+
+    hostname: ekuiper
+
+    restart: unless-stopped
+
+    # 容器所有权用户名
+
+    user: root
+
+    # 容器内环境变量, 一版都是容器程序自定义
+
+    environment:
+
+      # emqx地址
+
+      MQTT_SOURCE__DEFAULT__SERVER: "tcp://localhost:1883"
+
+      # 使用控制台日志
+
+      KUIPER__BASIC__CONSOLELOG: "true"
+
+      # 启动大小写忽略
+
+      KUIPER__BASIC__IGNORECASE: "false"
+
+      # 默认网关 |
+
+      NEURON__DEFAULT__URL: "tcp://localhost:7081"
+
+    # 容器卷 内外文件映射
+
+    volumes:
+
+      - /tmp/data:/kuiper/data
+
+      - /tmp/log:/kuiper/log
+
+      # 如果您想使用IPC模式连接到早期版本的neuron，请启用以下行
+
+      # - nng-ipc:/tmp
+
+  neuron:
+
+    image: neugates/neuron:latest
+
+    ports:
+
+      - "7001:7001"
+
+      # 与eKuiper通信的默认端口。如果您想使用其他端口，请更改它。
+
+      - "7081:7081"
+
+    container_name: neuron
+
+    hostname: neuron
+
+    volumes:
+
+      - /tmp/neuron/data:/opt/neuron/persistence
+
+      # 如果您想使用IPC模式连接到早期版本的eKuiper，请启用以下行
+
+      # - nng-ipc:/tmp
+
+# 如果您想使用IPC模式连接到早期版本的eKuiper和neuron，请启用以下行
+
+# volumes:
+
+#  nng-ipc:
+```
+
+##### 启动 docker-compose 集群。
+
+```shell
+$ cd 配置文件所在地
+$ docker-compose -p my_ekuiper up -d
+```
+在windows上部署完毕。
+![](readme.assets/Pasted%20image%2020230916201023.png)
+##### 检查docker镜像状况
+
+```shell
+$ docker ps
+```
+![](readme.assets/Pasted%20image%2020230916204224.png)
+
+[其他部署方式](https://ekuiper.org/docs/zh/latest/installation.html#%E9%80%9A%E8%BF%87-helm-%E5%AE%89%E8%A3%85-k8s%E3%80%81k3s)
+
+
+##### 使用ekuiper
+
+eKuiper 是 Golang 实现的轻量级物联网边缘分析、流式处理开源软件，可以运行在各类资源受限的边缘设备上。eKuiper 基于`源 (Source)`，`SQL (业务逻辑处理)`， `目标 (Sink)` 的方式来支持流式数据处理。
+
+- 源（Source）：流式数据的数据源，例如来自于 MQTT 服务器的数据。在 EdgeX 的场景下，数据源就是 EdgeX 消息总线（EdgeX message bus），可以是来自于 ZeroMQ 或者 MQTT 服务器；
+- SQL：SQL 是你流式数据处理指定业务逻辑的地方，eKuiper 提供了 SQL 语句可以对数据进行抽取、过滤和转换；
+- 目标（Sink）：目标用于将分析结果发送到特定的目标。例如，将分析结果发送到另外的 MQTT 服务器，或者一个 HTTP Rest 地址；
+![](readme.assets/Pasted%20image%2020230916210328.png)
+使用 eKuiper，一般需要完成以下三个步骤。
+- 创建流，就是你定义数据源的地方
+- 写规则
+    - 为数据分析写 SQL
+    - 指定一个保存分析结果的目标
+- 部署，并且运行规则
+
+
+
+
+###### 命令行工具
+进入到容器后，使用命令行进行规则构建，数据链接等操作。
+```shell
+-- 进入容器
+# docker exec -it kuiper /bin/sh
+
+-- 在容器内执行命令，创建 demo 的 stream 从devices/+/messages 主题 读取json数据结构，拿到temperature温度 和 humidity湿度 两个类型的值
+# 设置SOURCE 源数据topic
+# bin/kuiper create stream demo '(temperature float, humidity bigint) WITH (FORMAT="JSON", DATASOURCE="devices/+/messages")'
+Connecting to 127.0.0.1:20498...
+Stream demo is created.
+
+# 进入队列监听
+# bin/kuiper query
+Connecting to 127.0.0.1:20498...
+
+# 设置规则
+kuiper > select * from demo where temperature > 30;
+Query was submit successfully.
+
+# ctrl + c 取消监听
+
+```
+![](readme.assets/Pasted%20image%2020230917221708.png)
+
+现在我们使用paho.mqtt python客户端进行监听。
+```python
+#!/usr/bin/python
+
+# -*- coding: utf-8 -*-
+
+  
+  
+
+from paho.mqtt import client as mqtt_client
+
+import json
+
+import time
+
+  
+  
+
+class Demo(object):
+
+    def __init__(self, host, port, client_id, subscribeTopic, publishTopic) -> None:
+
+        self.host = host
+
+        self.handClient = mqtt_client.Client(client_id=client_id)
+
+        self.handClient.on_connect = self.on_connect
+
+        self.handClient.on_message = self.on_message
+
+        self.handClient.connect_async(host, port)
+
+        self.publishTopic = publishTopic
+
+        self.subscribeTopic = subscribeTopic
+
+        self.globalObj = None
+
+  
+
+    def on_connect(self, client, userdata, flags, rc):
+
+        if rc == 0:
+
+            print("链接成功")
+
+            self.handClient.subscribe(self.subscribeTopic)
+
+  
+
+    def on_message(self, client, userdata, message):
+
+        self.globalObj = message.payload.decode("utf-8")
+
+        print(f"{message.topic} 的 {self.globalObj}")
+
+  
+
+    def loop(self):
+
+        while True:
+
+            time.sleep(.1)
+
+            message = '{"temperature": 30, "humidity": 20}'
+
+            # 发送成功
+
+            self.handClient.publish(self.publishTopic, message)
+
+  
+
+    def run(self):
+
+        self.handClient.loop_start()
+
+        self.loop()
+
+  
+
+    def __del__(self):
+
+        self.handClient.disconnect()
+
+  
+  
+
+if __name__ == "__main__":
+
+    # 客户端id
+
+    client_id = "ekuiper quick test"
+
+    host = "localhost"
+
+    port = 1883
+
+    publishTopic = "devices/device_001/messages"
+
+    subscribeTopic = "devices/+/messages"
+
+    try:
+
+        D = Demo(client_id=client_id, host=host, port=port, subscribeTopic=subscribeTopic, publishTopic=publishTopic)
+
+        D.run()
+
+    except Exception as error:
+
+        print(error)
+
+    except KeyboardInterrupt:
+
+        print("手动中断")
+
+    else:
+
+        print("结束")
+```
+
+![](readme.assets/Pasted%20image%2020230917224410.png)
+
+###### 调试规则
+
+REST api规则
+https://ekuiper.org/docs/zh/latest/getting_started/debug_rules.html#%E5%88%9B%E5%BB%BA%E8%A7%84%E5%88%99
+https://ekuiper.org/docs/zh/latest/api/restapi/overview.html
+
+普通sql规则
+https://ekuiper.org/docs/zh/latest/guide/rules/overview.html
+https://ekuiper.org/docs/zh/latest/sqls/overview.html
+不做多余赘述。自行查看。
+
+
+###### 数据链接
+https://ekuiper.org/docs/zh/latest/guide/connector.html
+数据源连接器：从各种外部源 **导入** 数据到eKuiper平台。
+数据 Sink 连接器：从eKuiper平台 **导出** 处理后的数据发送到各种目标端点或系统，可直接与 MQTT、Neuron、EdgeX 等平台对接，并提供缓存机制以应对网络中断场景，确保数据的一致性。
+
+在一些工业网关中，也会被叫做南桥or北桥。
+南桥：工业设备协议
+北桥：消息平台 or 边缘流处理引擎
+
+这里我们不管其他类型的数据连接器。直接选择mqtt作为source 和 sink 的双边需求。
+
+
+
+- **数据源连接器**：负责从各类外部数据源中导入数据至 eKuiper。
+```shell
+# 进入容器
+$ docker exec -it ekuiper /bin/sh
+
+# 进入ekuiper配置文件夹
+$ cd kuiper/etc/
+```
+mqtt_source.yaml 文件
+```yaml
+#全局 MQTT 配置
+default:
+  qos: 1
+  server: "tcp://127.0.0.1:1883"
+  #username: user1
+  #password: password
+  # 证书路径
+  #certificationPath: /var/kuiper/xyz-certificate.pem
+  # 私钥路径
+  #privateKeyPath: /var/kuiper/xyz-private.pem.key
+  # 根证书路径
+  #rootCaPath: /var/kuiper/xyz-rootca.pem
+  # 是否跳过证书验证。如设置为 `true`，TLS 接受服务器提供的任何证书以及该证书中的任何主机名。
+  #insecureSkipVerify: true
+  # 连接器的重用 connections/connection.yaml 具体配置文件在这里哦。这里写的是key
+  #connectionSelector: mqtt.mqtt_conf1
+  # 使用指定的压缩方法解压缩。现在支持`gzip`、`zstd`
+  # decompression: ""
+  # mqtt 协议版本
+  # protocolVersion: 5
+  # MQTT 连接的客户端 ID。如未指定，将使用 uuid
+  # clientid: ""
+
+#覆盖全局配置
+demo_conf: #Conf_key
+  qos: 0
+  server: "tcp://10.211.55.6:1883"
+
+```
+
+![](readme.assets/Pasted%20image%2020230917233657.png)
+连接器重用也将配合sql规则。进行不同key的不同sql处理。
+https://ekuiper.org/docs/zh/latest/guide/connector.html#%E8%BF%9E%E6%8E%A5%E5%99%A8%E7%9A%84%E9%87%8D%E7%94%A8
+
+- **数据 Sink 连接器**：负责将 eKuiper 处理后的数据输出至外部系统。
+https://ekuiper.org/docs/zh/latest/guide/sinks/overview.html
+
+
+
+
+
+- 数据模板
+
+
+
+
+
+###### 可视化管理界面
+我们使用emqx/ekuiper-manager作为可视化管理ekuiper。
+还挺好用的。
+http://127.0.0.1:9082/
+账户：admin
+密码：public
+
+
+
+
+
+
+
+
+###### 扩展知识
+
+ekuiper还能和EdgeX边缘计算平台进行集成，成为EdgeX Foundry的规则引擎。
+https://docs.edgexfoundry.org/2.1/getting-started/Ch-GettingStartedDevelopers/
+https://ekuiper.org/docs/zh/latest/edgex/edgex_rule_engine_tutorial.html#%E6%A6%82%E8%A7%88
+
+
+######  项目配置
+离线缓存的保存位置根据 `etc/kuiper.yaml` 里的 store 配置决定，默认为 sqlite 。如果磁盘存储是sqlite，所有的缓存将被保存到`data/cache.db`文件。
+
+```yaml
+basic:
+  # true|false, with debug level, it prints more debug info
+  debug: false
+  # true|false, if it's set to true, then the log will be print to console
+  consoleLog: false
+  # true|false, if it's set to true, then the log will be print to log file
+  fileLog: true
+  # How many hours to split the file
+  rotateTime: 24
+  # Maximum file storage hours
+  maxAge: 72
+  # CLI ip
+  ip: 0.0.0.0
+  # CLI port
+  port: 20498
+  # REST service ip
+  restIp: 0.0.0.0
+  # REST service port
+  restPort: 9081
+  # The global time zone from the IANA time zone database, or Local if not set.
+  timezone: Local
+  # true|false, when true, will check the RSA jwt token for rest api
+  authentication: false
+  #  restTls:
+  #    certfile: /var/https-server.crt
+  #    keyfile: /var/https-server.key
+  # Prometheus settings
+  prometheus: false
+  prometheusPort: 20499
+  # The URL where hosts all of pre-build plugins. By default, it's at packages.emqx.net
+  pluginHosts: https://packages.emqx.net
+  # Whether to ignore case in SQL processing. Note that, the name of customized function by plugins are case-sensitive.
+  ignoreCase: false
+  sql:
+    # maxConnections indicates the max connections for the certain database instance group by driver and dsn sharing between the sources/sinks
+    # 0 indicates unlimited
+    maxConnections: 0
+  rulePatrolInterval: 10s
+
+# The default options for all rules. Each rule can override this setting by defining its own option
+rule:
+  # The qos of the rule. The values can be 0: At most once; 1: At least once; 2: Exactly once
+  # If qos is bigger than 0, the checkpoint mechanism will launch to save states so that they can be
+  # restored for unintended interrupt or planned restart of the rule. The performance may be affected
+  # to enable the checkpoint mechanism
+  qos: 0
+  # The interval in millisecond to run the checkpoint mechanism.
+  checkpointInterval: 300000
+  # Whether to send errors to sinks
+  sendError: true
+  # The strategy to retry for rule errors.
+  restartStrategy:
+    # The maximum retry times
+    attempts: 0
+    # The interval in millisecond to retry
+    delay: 1000
+    # The maximum interval in millisecond to retry
+    maxDelay: 30000
+    # The exponential to increase the interval. It can be a float value.
+    multiplier: 2
+    # How large random value will be added or subtracted to the delay to prevent restarting multiple rules at the same time.
+    jitterFactor: 0.1
+sink:
+  # Control to enable cache or not. If it's set to true, then the cache will be enabled, otherwise, it will be disabled.
+  enableCache: false
+
+  # The maximum number of messages to be cached in memory.
+  memoryCacheThreshold: 1024
+
+  # The maximum number of messages to be cached in the disk.
+  maxDiskCache: 1024000
+
+  # The number of messages for a buffer page which is the unit to read/write to disk in batch to prevent frequent IO
+  bufferPageSize: 256
+
+  # The interval in millisecond to resend the cached messages
+  resendInterval: 0
+
+  # Whether to clean the cache when the rule stops
+  cleanCacheAtStop: false
+
+source:
+  ## Configurations for the global http data server for httppush source
+  # HTTP data service ip
+  httpServerIp: 0.0.0.0
+  # HTTP data service port
+  httpServerPort: 10081
+  # httpServerTls:
+  #    certfile: /var/https-server.crt
+  #    keyfile: /var/https-server.key
+
+store:
+  #Type of store that will be used for keeping state of the application
+  type: sqlite
+  extStateType: sqlite
+  redis:
+    host: localhost
+    port: 6379
+    password: kuiper
+    #Timeout in ms
+    timeout: 1000
+  sqlite:
+    #Sqlite file name, if left empty name of db will be sqliteKV.db
+    name:
+
+# The settings for portable plugin
+portable:
+  # The executable of python. Specify this if you have multiple python instances in your system
+  # or other circumstance where the python executable cannot be successfully invoked through the default command.
+  pythonBin: python
+  # control init timeout in ms. If the init time is longer than this value, the plugin will be terminated.
+  initTimeout: 5000
+```
+
+###### ekuiper二次开发
+https://ekuiper.org/docs/zh/latest/extension/overview.html
 
 
 

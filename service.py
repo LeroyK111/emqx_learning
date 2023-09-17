@@ -39,10 +39,10 @@ class Demo(object):
 
 
 if __name__ == "__main__":
-    broker = "192.168.1.51"
+    broker = "localhost"
     port = 1883
     # topic = "/python/mqtt"
-    topic = "retain"
+    topic = "devices/+/messages"
     client_id = f"python-mqtt-{random.randint(0, 1000)}"
     try:
         D = Demo(broker, port, topic, client_id)

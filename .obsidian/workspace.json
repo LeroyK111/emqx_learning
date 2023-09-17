@@ -129,6 +129,16 @@
                 "file": "README.md"
               }
             }
+          },
+          {
+            "id": "bd188ee937924e19",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency"
+              }
+            }
           }
         ],
         "currentTab": 3
@@ -149,27 +159,27 @@
   },
   "active": "731fd1df3b6eea67",
   "lastOpenFiles": [
+    "readme.assets/Pasted image 20230917233657.png",
+    "readme.assets/Pasted image 20230917224410.png",
+    "ekuiper用法/快速测试.py.1e15b3821652f357783b1f3f3447f20f.tmp",
+    "ekuiper用法/快速测试.py",
+    "readme.assets/Pasted image 20230917221708.png",
+    "readme.assets/Pasted image 20230917221625.png",
+    "readme.assets/Pasted image 20230916210328.png",
+    "readme.assets/Pasted image 20230916204224.png",
+    "readme.assets/Pasted image 20230916201023.png",
+    "readme.assets/Pasted image 20230913103254.png",
     "ekuiper用法/docker-compose.yaml",
     "ekuiper用法",
     "readme.assets/Pasted image 20230911004519.png",
     "readme.assets/Pasted image 20230911004425.png",
     "readme.assets/Pasted image 20230911004236.png",
-    "readme.assets/Pasted image 20230911002247.png",
-    "readme.assets/Pasted image 20230911002052.png",
-    "readme.assets/Pasted image 20230911001909.png",
-    "readme.assets/Pasted image 20230911001435.png",
     "advance/特殊属性.py.7f319c79a7ba8cd0a3e9c75805a0cd7a.tmp",
     "advance/特殊属性.py",
     "advance/订阅选项server.py",
     "advance/保留消息server copy.py",
     "advance/保留消息server.py.8db4365c5a4de7f59e370b76413170b7.tmp",
     "advance/保留消息client.py.1b7cfa13b036b10da0bc23d1d648a8e4.tmp",
-    "advance/保留消息server.py",
-    "advance/保留消息client.py",
-    "readme.assets/Pasted image 20230910195246.png",
-    "introduction/demo.py",
-    "readme.assets/Pasted image 20230910181206.png",
-    "readme.assets/Pasted image 20230910181149.png",
     "README.md"
   ]
 }
