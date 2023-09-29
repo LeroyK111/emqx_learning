@@ -18,10 +18,13 @@ services:
       DEFAULT_EKUIPER_ENDPOINT: "http://10.102.221.53:9081"
   # 服务
   ekuiper:
-    image: lfedge/ekuiper:latest
+    # 普通版本
+    # image: lfedge/ekuiper:latest
+    # python版本
+    image: lfedge/ekuiper:1.12.0-alpha.1-slim-python
     ports:
-      - "9081:9081"
-      - "127.0.0.1:20498:20498"
+      - "9081:9081" # 9081端口：这个端口通常用于Ekui per的HTTP API服务。通过这个端口，用户可以与Ekui per引擎进行通信，发送数据流处理任务、查询状态信息以及管理Ekui per的各种功能。
+      - "127.0.0.1:20498:20498" # 20498端口：这个端口可能用于Ekui per的其他服务或通信。具体的端口用途可能会根据Ekui per的配置和用途而有所不同，您可能需要查看Ekui per的文档或配置文件来确认这个端口的具体作用。
     container_name: ekuiper
     hostname: ekuiper
     restart: unless-stopped
@@ -46,11 +49,16 @@ services:
   neuron:
     image: neugates/neuron:latest
     ports:
+      # 7000端口用于Neuron仪表板的访问
+      - "7000:7000"
+      # 7001端口用于Neuron API的访问。使用
+      # https://neugates.io/docs/zh/latest/http-api/http-api.html
       - "7001:7001"
       # 与eKuiper通信的默认端口。如果您想使用其他端口，请更改它。
       - "7081:7081"
     container_name: neuron
     hostname: neuron
+    restart: unless-stopped
     volumes:
       - /tmp/neuron/data:/opt/neuron/persistence
       # 如果您想使用IPC模式连接到早期版本的eKuiper，请启用以下行

@@ -851,19 +851,25 @@ services:
 
       # 其中，DEFAULT_EKUIPER_ENDPOINT 可用于指定默认管理的 eKuiper 地址，此处应设置成实际的 eKuiper 所在机器的 ip 。
 
-      DEFAULT_EKUIPER_ENDPOINT: "http://localhost:9081"
+      DEFAULT_EKUIPER_ENDPOINT: "http://10.102.221.53:9081"
 
   # 服务
 
   ekuiper:
 
-    image: lfedge/ekuiper:latest
+    # 普通版本
+
+    # image: lfedge/ekuiper:latest
+
+    # python版本
+
+    image: lfedge/ekuiper:1.12.0-alpha.1-slim-python
 
     ports:
 
-      - "9081:9081"
+      - "9081:9081" # 9081端口：这个端口通常用于Ekui per的HTTP API服务。通过这个端口，用户可以与Ekui per引擎进行通信，发送数据流处理任务、查询状态信息以及管理Ekui per的各种功能。
 
-      - "127.0.0.1:20498:20498"
+      - "127.0.0.1:20498:20498" # 20498端口：这个端口可能用于Ekui per的其他服务或通信。具体的端口用途可能会根据Ekui per的配置和用途而有所不同，您可能需要查看Ekui per的文档或配置文件来确认这个端口的具体作用。
 
     container_name: ekuiper
 
@@ -881,7 +887,7 @@ services:
 
       # emqx地址
 
-      MQTT_SOURCE__DEFAULT__SERVER: "tcp://localhost:1883"
+      MQTT_SOURCE__DEFAULT__SERVER: "tcp://10.102.221.53:1883"
 
       # 使用控制台日志
 
@@ -893,7 +899,7 @@ services:
 
       # 默认网关 |
 
-      NEURON__DEFAULT__URL: "tcp://localhost:7081"
+      NEURON__DEFAULT__URL: "tcp://10.102.221.53:7081"
 
     # 容器卷 内外文件映射
 
@@ -912,6 +918,14 @@ services:
     image: neugates/neuron:latest
 
     ports:
+
+      # 7000端口用于Neuron仪表板的访问
+
+      - "7000:7000"
+
+      # 7001端口用于Neuron API的访问。使用
+
+      # https://neugates.io/docs/zh/latest/http-api/http-api.html
 
       - "7001:7001"
 
@@ -971,23 +985,63 @@ eKuiper 是 Golang 实现的轻量级物联网边缘分析、流式处理开源�
     - 指定一个保存分析结果的目标
 - 部署，并且运行规则
 
-
-
+###### 目录结构
+```sh
+# `bin` 目录包括所有的可执行文件。例如，ekuiper 服务器 `kuiperd` 和 cli 客户端 `kuiper`
+bin
+	- kuiperd
+	- kuiper
+# `etc` 目录包含 eKuiper 的默认配置文件。如全局配置文件 `kuiper.yaml` 和所有源配置文件，如 `mqtt_source.yaml`
+etc
+	- client.yaml
+	- functions
+	- mqmt
+	- mqtt_source.yaml
+	- ops
+	- sinks
+	- connections
+	- kuiper.yaml # 全局配置
+	- mqtt_source.json
+	- multilingual
+	- services
+	- sources
+# 这个文件夹保存了流和规则的持久定义。它还包含任何用户定义的配置
+data
+	- connections # 链接方式
+	- extState.db # 流处理函数
+	- functions # 元数据文件格式
+	- initialized # 初始化
+	- services # 服务
+	- sinks # 流
+	- sources # 源
+	- sqlliteKV.db # 存储sqllite
+# eKuiper 允许用户开发你自己的插件，并将这些插件放入这个文件夹。
+plugins
+	- functions
+	- portable
+	- sink
+	- sources
+	- wasm
+# 所有的日志文件都在这个文件夹下。默认的日志文件名是 `stream.log`
+log
+	- stream.log
+	- otherXXXX.log
+```
 
 ###### 命令行工具
 进入到容器后，使用命令行进行规则构建，数据链接等操作。
 ```shell
--- 进入容器
-# docker exec -it kuiper /bin/sh
+#进入容器
+docker exec -it kuiper /bin/sh
 
--- 在容器内执行命令，创建 demo 的 stream 从devices/+/messages 主题 读取json数据结构，拿到temperature温度 和 humidity湿度 两个类型的值
+# 在容器内执行命令，创建 demo 的 stream 从devices/+/messages 主题 读取json数据结构，拿到temperature温度 和 humidity湿度 两个类型的值
 # 设置SOURCE 源数据topic
-# bin/kuiper create stream demo '(temperature float, humidity bigint) WITH (FORMAT="JSON", DATASOURCE="devices/+/messages")'
+bin/kuiper create stream demo '(temperature float, humidity bigint) WITH (FORMAT="JSON", DATASOURCE="devices/+/messages")'
 Connecting to 127.0.0.1:20498...
 Stream demo is created.
 
 # 进入队列监听
-# bin/kuiper query
+bin/kuiper query
 Connecting to 127.0.0.1:20498...
 
 # 设置规则
@@ -998,6 +1052,9 @@ Query was submit successfully.
 
 ```
 ![](readme.assets/Pasted%20image%2020230917221708.png)
+
+
+
 
 现在我们使用paho.mqtt python客户端进行监听。
 ```python
@@ -1122,15 +1179,42 @@ if __name__ == "__main__":
 ![](readme.assets/Pasted%20image%2020230917224410.png)
 
 ###### 调试规则
+普通sql规则
+https://ekuiper.org/docs/zh/latest/guide/rules/overview.html
+https://ekuiper.org/docs/zh/latest/sqls/overview.html
+
+
+
+
+
+
+
+图规则
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 REST api规则
 https://ekuiper.org/docs/zh/latest/getting_started/debug_rules.html#%E5%88%9B%E5%BB%BA%E8%A7%84%E5%88%99
 https://ekuiper.org/docs/zh/latest/api/restapi/overview.html
 
-普通sql规则
-https://ekuiper.org/docs/zh/latest/guide/rules/overview.html
-https://ekuiper.org/docs/zh/latest/sqls/overview.html
-不做多余赘述。自行查看。
+
+
+
+
 
 
 ###### 数据链接
@@ -1143,7 +1227,6 @@ https://ekuiper.org/docs/zh/latest/guide/connector.html
 北桥：消息平台 or 边缘流处理引擎
 
 这里我们不管其他类型的数据连接器。直接选择mqtt作为source 和 sink 的双边需求。
-
 
 
 - **数据源连接器**：负责从各类外部数据源中导入数据至 eKuiper。
@@ -1209,7 +1292,7 @@ https://ekuiper.org/docs/zh/latest/guide/sinks/overview.html
 http://127.0.0.1:9082/
 账户：admin
 密码：public
-
+ 
 
 
 
@@ -1239,11 +1322,11 @@ basic:
   rotateTime: 24
   # Maximum file storage hours
   maxAge: 72
-  # CLI ip
+  # CLI ip 命令行接口
   ip: 0.0.0.0
   # CLI port
   port: 20498
-  # REST service ip
+  # REST service ip web服务器接口
   restIp: 0.0.0.0
   # REST service port
   restPort: 9081
@@ -1344,6 +1427,46 @@ portable:
 
 ###### ekuiper二次开发
 https://ekuiper.org/docs/zh/latest/extension/overview.html
+一般来说，原生插件的性能最好，但最为复杂，兼容性最低。Portable 插件在性能和复杂性之间有更好的平衡。 外部扩展不需要编码，但资源消耗最大，只支持函数扩展。
+
+- 原生插件
+	- go语言开发。
+	- https://ekuiper.org/docs/zh/latest/extension/native/overview.html
+- Portable插件开发
+	- 推荐使用这个开发。
+	- go SDK开发
+	- python SDK开发
+		- https://ekuiper.org/docs/zh/latest/extension/portable/python_sdk.html#%E6%8F%92%E4%BB%B6%E5%BC%80%E5%8F%91
+
+★安装python开发环境
+
+```
+pip install nng ekuiper
+```
+
+
+
+
+
+- 外部函数
+https://ekuiper.org/docs/zh/latest/extension/external/external_func.html#%E6%A6%82%E8%A7%88
+在某些场景里，我们希望 eKuiper 可以通过热更新的方式，创建内部的某个 SQL 函数，将其映射为外部的服务，使其在实际场景运行中可以直接调用外部服务。目前， eKuiper 提供了配置的方式，将外部已有的一个服务，映射为 eKuiper 的一个 SQL 函数。在运行使用外部函数的规则时，可以对数据输入输出进行转换，并调用对应的外部服务。
+
+
+
+
+- Wasm插件
+作为对原生插件的补充 Wasm 插件旨在提供相同的功能，同时允许在更通用的环境中运行并由更多语言创建。
+https://ekuiper.org/docs/zh/latest/extension/wasm/overview.html#%E5%AE%89%E8%A3%85%E5%B7%A5%E5%85%B7
+创建插件的步骤如下：
+1. 开发插件
+2. 根据编程语言构建或打包插件
+3. 通过 eKuiper 文件/REST/CLI 注册插件
+
+在 Wasm 插件模式下，用选择的语言来实现函数，并将其编译成 Wasm 文件。只要是 WebAssembly 支持的语言均可，例如 go，rust 等。 
+官网使用 tinygo 工具将 go 文件编译成 Wasm 文件。
+
+我们则使用JavaScript，Rust，Python编译成为wasm文件。
 
 
 
@@ -2774,3 +2897,45 @@ https://www.emqx.io/docs/zh/v5.1/gateway/gateway.html
 - [CoAP](https://www.emqx.io/docs/zh/v5.1/gateway/coap.html)
 - [LwM2M](https://www.emqx.io/docs/zh/v5.1/gateway/lwm2m.html)
 - [Exproto](https://www.emqx.io/docs/zh/v5.1/gateway/exproto.html)
+
+
+## EMQX二次开发
+https://www.emqx.io/docs/zh/v5.2/extensions/introduction.html
+支持插件和钩子。
+EMQX 提供了丰富的插件开发接口，通过 Hook 函数能够接入 EMQX 的核心流程，实现自定义业务逻辑，如访问控制、消息路由、消息存储等；通过协议扩展接口能够实现其他协议适配，并使用统一的 [网关](https://www.emqx.io/docs/zh/v5.2/gateway/gateway.html) 框架进行客户端接入管理。
+
+### 插件
+https://www.emqx.io/docs/zh/v5.2/extensions/plugins.html
+插件开发需要 Erlang 的代码编程经验。
+```
+# 插件模板地址。
+https://github.com/emqx/emqx-plugin-template
+```
+不想学它，放弃。
+### 钩子
+https://www.emqx.io/docs/zh/v5.2/extensions/exhook.html
+RPC（Remote Procedure Call，远程过程调用）是一种计算机通信协议，它允许一个程序或进程（通常是在一个计算机上运行）调用另一个计算机上的远程程序或服务，就像调用本地程序一样。RPC通常用于分布式系统中，以便不同的计算机之间可以相互通信和协作。
+多语言的 **钩子扩展** 由 **emqx-exhook** 插件进行支持。它允许用户使用其它编程（例如：Python、Java 等）直接向 EMQX 挂载钩子，以接收并处理 EMQX 系统的事件，达到扩展和定制 EMQX 的目的。例如，用户可以使用其他编程语言来实现：
+
+- 客户端接入的认证鉴权
+- 发布/订阅权限检查
+- 消息的持久化，桥接
+- 发布/订阅，或者客户端上下线事件的通知处理
+
+**emqx-exhook** 使用 [gRPC (opens new window)](https://www.grpc.io/)作为 RPC 的通信框架
+![](readme.assets/Pasted%20image%2020230929145107.png)
+它表明：EMQX 作为一个 gRPC 客户端，将系统中的钩子事件发送到用户的 gRPC 服务端。
+
+#### 使用grpc开发框架进行EMQX的钩子开发
+https://grpc.io/docs/languages/
+![](readme.assets/Pasted%20image%2020230929145403.png)
+我大概率会选择python，rust，nodejs进行二次开发。
+先不管这个。
+
+
+
+
+
+
+
+

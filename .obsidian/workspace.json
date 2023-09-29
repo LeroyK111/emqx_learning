@@ -159,6 +159,10 @@
   },
   "active": "731fd1df3b6eea67",
   "lastOpenFiles": [
+    "readme.assets/Pasted image 20230929145403.png",
+    "readme.assets/Pasted image 20230929145107.png",
+    "ekuiper用法/wasm函数开发",
+    "ekuiper用法/portable插件开发",
     "TQ/src/socketCan/canBus.PY.7d7e6e19d3d81fbae9aa1faa6037c628.tmp",
     "TQ/src/shell/driver.py",
     "TQ/src/shell/__init__.py",
@@ -169,9 +173,6 @@
     "TQ/src/dist/assets",
     "TQ/src/dist/vite.svg",
     "TQ/src/dist",
-    "TQ/src/web/vite.config.ts.timestamp-1695193019540-1bb93a7f09ea2.mjs",
-    "TQ/src/web/vite.config.ts.timestamp-1695192989171-76e2c3ed5d645.mjs",
-    "TQ/src/web/vite.config.ts.timestamp-1695192970168-efd38d290b48d.mjs",
     "TQ/TQ1/README.md",
     "TQ/src/web/node_modules/@babel/helper-create-class-features-plugin/node_modules/semver/README.md",
     "TQ/src/web/node_modules/@babel/helper-compilation-targets/node_modules/semver/README.md",
@@ -203,7 +204,6 @@
     "TQ1/src/web/public/vite.svg",
     "readme.assets/Pasted image 20230917233657.png",
     "readme.assets/Pasted image 20230917224410.png",
-    "readme.assets/Pasted image 20230917221708.png",
-    "readme.assets/Pasted image 20230917221625.png"
+    "readme.assets/Pasted image 20230917221708.png"
   ]
 }
