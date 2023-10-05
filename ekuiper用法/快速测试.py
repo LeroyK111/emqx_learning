@@ -29,10 +29,10 @@ class Demo(object):
 
     def loop(self):
         while True:
-            time.sleep(.1)
+            # time.sleep(.1)
             message = '{"temperature": 40, "humidity": 20}'
             # 发送成功
-            self.handClient.publish(self.publishTopic, message, qos=1, retain=True)
+            self.handClient.publish(self.publishTopic, message, qos=0, retain=True)
 
     def run(self):
         self.handClient.loop_start()
@@ -44,7 +44,7 @@ class Demo(object):
 
 if __name__ == "__main__":
     # 客户端id
-    client_id = "ekuiper quick test"
+    client_id = "ekuiperRuleClient"
     host = "localhost"
     port = 1883
     publishTopic = "devices/device_001/messages"

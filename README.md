@@ -1054,8 +1054,6 @@ Query was submit successfully.
 ![](readme.assets/Pasted%20image%2020230917221708.png)
 
 
-
-
 现在我们使用paho.mqtt python客户端进行监听。
 ```python
 #!/usr/bin/python
@@ -1178,44 +1176,238 @@ if __name__ == "__main__":
 
 ![](readme.assets/Pasted%20image%2020230917224410.png)
 
-###### 调试规则
-普通sql规则
-https://ekuiper.org/docs/zh/latest/guide/rules/overview.html
-https://ekuiper.org/docs/zh/latest/sqls/overview.html
+###### web界面
+![](readme.assets/Pasted%20image%2020230930193602.png)
+![](readme.assets/Pasted%20image%2020230930204118.png)
+- 创建流
+![](readme.assets/Pasted%20image%2020230930192645.png)
+- 创建规则
+我们就不用流程图创建了。
+![](readme.assets/Pasted%20image%2020230930210753.png)
+	
+	 - 不喜欢图配置。
+![](readme.assets/Pasted%20image%2020230930212203.png)
+	
+	 - 可视化模式
+![](readme.assets/Pasted%20image%2020230930220207.png)
+![](readme.assets/Pasted%20image%2020230930221803.png)
+![](readme.assets/Pasted%20image%2020230930221511.png)
+![](readme.assets/Pasted%20image%2020230930221747.png)
 
+	- 文本模式
+`这里的模式会在规则篇章处重复使用 ，毕竟这里是 REST 接口常用的数据结构`
 
+![](readme.assets/Pasted%20image%2020230930213300.png)
+- 扩展
+`后续会在二次开发中详细讲到`
+![](readme.assets/Pasted%20image%2020230930224307.png)
 
+- 配置
+`存放默认的模板配置等`
+![](readme.assets/Pasted%20image%2020230930224348.png)
 
+- 系统信息
+![](readme.assets/Pasted%20image%2020230930224509.png)
+- 其他设置
+```
+只需要记得修改一下默认用户名和密码即可。
+其他用户、角色、权限也不用。
+```
+![](readme.assets/Pasted%20image%2020230930224633.png)
 
+###### 调试规则sink
+- 设置规则的本质：在源source的基础上，对源数据table进行sql处理。然后，active发射到target service
+```json
+{
+  # 唯一id
+  "id": "rule1",
+  # 规则描述
+  "name": "简单规则",
+  # sql查询，本规则只能对应结构化数据
+  "sql": "SELECT demo.temperature, demo1.temp FROM demo left join demo1 on demo.timestamp = demo1.timestamp where demo.temperature > demo1.temp GROUP BY demo.temperature, HOPPINGWINDOW(ss, 20, 10)",
+  # 图规则，当sql不存在时可以用这个。gui专用。
+ "graph": {
+    "nodes": {
+      "demo": {
+        "type": "source",
+        "nodeType": "mqtt",
+        "props": {
+          "datasource": "devices/+/messages"
+        }
+      },
+      "humidityFilter": {
+        "type": "operator",
+        "nodeType": "filter",
+        "props": {
+          "expr": "humidity > 30"
+        }
+      },
+      "logfunc": {
+        "type": "operator",
+        "nodeType": "function",
+        "props": {
+          "expr": "log(temperature) as log_temperature"
+        }
+      },
+      "tempFilter": {
+        "type": "operator",
+        "nodeType": "filter",
+        "props": {
+          "expr": "log_temperature < 1.6"
+        }
+      },
+      "pick": {
+        "type": "operator",
+        "nodeType": "pick",
+        "props": {
+          "fields": ["log_temperature as temp", "humidity"]
+        }
+      },
+      "mqttout": {
+        "type": "sink",
+        "nodeType": "mqtt",
+        "props": {
+          "server": "tcp://${mqtt_srv}:1883",
+          "topic": "devices/result"
+        }
+      }
+    },
+    "topo": {
+      "sources": ["demo"],
+      "edges": {
+        "demo": ["humidityFilter"],
+        "humidityFilter": ["logfunc"],
+        "logfunc": ["tempFilter"],
+        "tempFilter": ["pick"],
+        "pick": ["mqttout"]
+      }
+    }
+  },
+  # 动作（转发目标）
+  "actions": [
+    {
+      "log": {}
+    },
+    {
+      "mqtt": {
+        "server": "tcp://47.52.67.87:1883",
+        "topic": "demoSink",
+        # 这里都是配置options
+        "qos": 0,
+      }
+    }
+  ]
+}
+```
+- 表table
+`eKuiper 流是无界且不可变的，任何新数据都会附加到当前流中进行处理。 Table 用于表示流的当前状态。它可以被认为是流的快照。用户可以使用 table 来保留一批数据进行处理。`
 
+有两种类型的表。
+- 扫描表（Scan Table）：在内存中积累数据。它适用于较小的数据集，表的内容不需要在规则之间共享。
+- 查询表（Lookup Table）：绑定外部表并按需查询。它适用于更大的数据集，并且在规则之间共享表的内容。
 
-图规则
+https://ekuiper.org/docs/zh/latest/guide/tables/overview.html
 
+- graph图规则 (不常用)
+ eKuiper 利用 SQL 来定义规则逻辑。虽然这对开发人员来说很方便，但对没有开发知识的用户来说，还是不容易使用。即使是用SQL定义的，在运行时，规则都是一个元素的有向无环图（Source/Operator/Sink）。该图可以很容易地映射到一个拖放用户界面，以方便用户。因此，在规则API中提供了一个替代的 `graph` 属性。
 
+```json
+{
+  "id": "rule1",
+  "name": "Test Condition",
+  "graph": {
+    "nodes": {
+      "demo": {
+        "type": "source",
+        "nodeType": "mqtt",
+        "props": {
+          "datasource": "devices/+/messages"
+        }
+      },
+      "humidityFilter": {
+        "type": "operator",
+        "nodeType": "filter",
+        "props": {
+          "expr": "humidity > 30"
+        }
+      },
+      "mqttout": {
+        "type": "sink",
+        "nodeType": "mqtt",
+        "props": {
+          "server": "tcp://${mqtt_srv}:1883",
+          "topic": "devices/result"
+        }
+      }
+    },
+    "topo": {
+      "sources": ["demo"],
+      "edges": {
+        "demo": ["humidityFilter"],
+        "humidityFilter": ["mqttout"]
+      }
+    }
+  }
+}
 
+```
 
+- 规则管道 (不常用)
+我们可以通过将先前规则的结果导入后续规则来形成规则管道。 这可以通过使用中间存储或 MQ（例如 mqtt 消息服务器）来实现。 通过同时使用 [内存源](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/memory.html) 和 [目标](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/memory.html)，我们可以创建没有外部依赖的规则管道。
+```json
+#1 创建源流
+{"sql" : "create stream demo () WITH (DATASOURCE=\"demo\", FORMAT=\"JSON\")"}
 
+#2 创建规则和内存目标
+{
+  "id": "rule1",
+  "sql": "SELECT * FROM demo WHERE isNull(temperature)=false",
+  "actions": [{
+    "log": {
+    },
+    "memory": {
+      "topic": "home/ch1/sensor1"
+    }
+  }]
+}
 
+#3 从内存主题创建一个流
+{"sql" : "create stream sensor1 () WITH (DATASOURCE=\"home/+/sensor1\", FORMAT=\"JSON\", TYPE=\"memory\")"}
 
+#4 从内存主题创建另一个要使用的规则
+{
+  "id": "rule2-1",
+  "sql": "SELECT avg(temperature) FROM sensor1 GROUP BY CountWindow(10)",
+  "actions": [{
+    "log": {
+    },
+    "memory": {
+      "topic": "analytic/sensors"
+    }
+  }]
+}
 
+{
+  "id": "rule2-2",
+  "sql": "SELECT temperature + 273.15 as k FROM sensor1",
+  "actions": [{
+    "log": {
+    }
+  }]
+}
+```
+- 状态和容错（不常用）
+eKuiper 支持有状态的规则流。eKuiper 中有两种状态：
+https://ekuiper.org/docs/zh/latest/guide/rules/state_and_fault_tolerance.html
+1. 窗口操作和可回溯源的内部状态。
+2. 对流上下文扩展公开的用户状态，可参考 [状态存储](https://ekuiper.org/docs/zh/latest/extension/native/overview.html#%E7%8A%B6%E6%80%81%E5%AD%98%E5%82%A8)。
 
+- 序列化（不常用）
+https://ekuiper.org/docs/zh/latest/guide/serialization/serialization.html
+eKuiper 计算过程中使用的是基于 Map 的数据结构，因此 source/sink 连接外部系统的过程中，通常需要进行编解码以转换格式。在 source/sink 中，都可以通过配置参数 `format` 和 `schemaId` 来指定使用的编解码方案。
 
-
-
-
-
-
-
-
-REST api规则
-https://ekuiper.org/docs/zh/latest/getting_started/debug_rules.html#%E5%88%9B%E5%BB%BA%E8%A7%84%E5%88%99
-https://ekuiper.org/docs/zh/latest/api/restapi/overview.html
-
-
-
-
-
-
+- 边缘计算（常用）
+集成机器学习框架和深度学习框架后，对边缘数据进行实时数据分析和处理。
 
 ###### 数据链接
 https://ekuiper.org/docs/zh/latest/guide/connector.html
@@ -1227,7 +1419,6 @@ https://ekuiper.org/docs/zh/latest/guide/connector.html
 北桥：消息平台 or 边缘流处理引擎
 
 这里我们不管其他类型的数据连接器。直接选择mqtt作为source 和 sink 的双边需求。
-
 
 - **数据源连接器**：负责从各类外部数据源中导入数据至 eKuiper。
 ```shell
@@ -1270,17 +1461,222 @@ demo_conf: #Conf_key
 ```
 
 ![](readme.assets/Pasted%20image%2020230917233657.png)
-连接器重用也将配合sql规则。进行不同key的不同sql处理。
+- 连接器重用也将配合sql规则。进行不同key的不同sql处理。
 https://ekuiper.org/docs/zh/latest/guide/connector.html#%E8%BF%9E%E6%8E%A5%E5%99%A8%E7%9A%84%E9%87%8D%E7%94%A8
+本质就是复用连接器。
+```数据源
+/kuiper/etc/connections/connection.yaml
+```
+```yaml
+mqtt:
+
+  localConnection: #connection key
+
+    server: "tcp://127.0.0.1:1883"
+
+    username: ekuiper
+
+    password: password
+
+    #certificationPath: /var/kuiper/xyz-certificate.pem
+
+    #privateKeyPath: /var/kuiper/xyz-private.pem.key
+
+    #rootCaPath: /var/kuiper/xyz-rootca.pem
+
+    #insecureSkipVerify: false
+
+    #protocolVersion: 3
+
+  cloudConnection: #connection key
+
+    server: "tcp://broker.emqx.io:1883"
+
+    username: user1
+
+    password: password
+
+    #certificationPath: /var/kuiper/xyz-certificate.pem
+
+    #privateKeyPath: /var/kuiper/xyz-private.pem.ke
+
+    #rootCaPath: /var/kuiper/xyz-rootca.pem
+
+    #insecureSkipVerify: false
+
+    #protocolVersion: 3
+
+  baetylBroker:
+
+    server: "mqtts://baetyl-broker.baetyl-edge-system:50010"
+
+    clientid: ekuiper
+
+    qos: 0
+
+    certificationPath: /var/lib/baetyl/system/certs/crt.pem
+
+    privateKeyPath: /var/lib/baetyl/system/certs/key.pem
+
+    rootCaPath: /var/lib/baetyl/system/certs/ca.pem
+
+    insecureSkipVerify: false
+
+  
+
+edgex:
+
+  redisMsgBus: #redis connection key
+
+    protocol: redis
+
+    server: 127.0.0.1
+
+    port: 6379
+
+    type: redis
+
+    #  Below is optional configurations settings for mqtt
+
+    #  type: mqtt
+
+    #  optional:
+
+    #    ClientId: client1
+
+    #    Username: user1
+
+    #    Password: password
+
+    #    Qos: 1
+
+    #    KeepAlive: 5000
+
+    #    Retained: true/false
+
+    #    ConnectionPayload:
+
+    #    CertFile:
+
+    #    KeyFile:
+
+    #    CertPEMBlock:
+
+    #    KeyPEMBlock:
+
+    #    SkipCertVerify: true/false
+
+  mqttMsgBus: #connection key
+
+    protocol: tcp
+
+    server: 127.0.0.1
+
+    port: 1883
+
+    type: mqtt
+
+    optional:
+
+      KeepAlive: "50"
+
+  
+
+  natsMsgBus: #connection key
+
+    protocol: tcp
+
+    server: edgex-nats-server
+
+    port: 4222
+
+    type: nats-jetstream
+
+#    optional:
+
+#      ClientId ="<service-key>" # must be unique name of the service, thus the service key (core-data, etc) is used
+
+#     # Connection information
+
+#      Format =  "nats" # Use 'json' for backward compatability with services using MQTT
+
+#      ConnectTimeout = "5" # Seconds
+
+#      RetryOnFailedConnect = "true"
+
+#      QueueGroup = ""
+
+#      Durable =  "" # Jetstream only
+
+#      AutoProvision = "true" # Jetstream only
+
+#      Deliver = "new" # Jetstream only
+```
+对应的mqtt配置
+```
+/kuiper/etc/mqtt_source.yaml
+```
+```yaml
+#Override the global configurations
+demo_conf: #Conf_key
+  qos: 0
+  connectionSelector: mqtt.localConnection
+  servers: [tcp://10.211.55.6:1883, tcp://127.0.0.1]
+
+#Override the global configurations
+demo2_conf: #Conf_key
+  qos: 0
+  connentionSelector: mqtt.localConnection
+  servers: [tcp://10.211.55.6:1883, tcp://127.0.0.1]
+
+```
+
+用户可以直接使用标准 eKuiper 实例中的内置源。内置源的列表如下。
+- [Mqtt source](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/mqtt.html)：从mqtt 主题读取数据。
+- [Neuron source](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/neuron.html): 从本地 Neuron 实例读取数据。
+- [EdgeX source](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/edgex.html): 从 EdgeX foundry 读取数据。
+- [Http pull source](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/http_pull.html)：从 http 服务器中拉取数据。
+- [Http push source](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/http_push.html)：通过 http 推送数据到 eKuiper。
+- [Redis source](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/redis.html): 从 Redis 中查询数据，用作查询表。
+- [File source](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/file.html)：从文件中读取数据，通常用作表格。
+- [Memory source](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/memory.html)：从 eKuiper 内存主题读取数据以形成规则管道。
+- [SQL source](https://ekuiper.org/docs/zh/latest/guide/sources/plugin/sql.html): 定期从关系数据库中拉取数据。
+- [Random source](https://ekuiper.org/docs/zh/latest/guide/sources/plugin/random.html): 一个生成随机数据的源，用于测试。
+- [Zero MQ source](https://ekuiper.org/docs/zh/latest/guide/sources/plugin/zmq.html)：从 Zero MQ 读取数据。
+
+`本次我们有两个数据源：canBUS插件，mqtt插件`
 
 - **数据 Sink 连接器**：负责将 eKuiper 处理后的数据输出至外部系统。
 https://ekuiper.org/docs/zh/latest/guide/sinks/overview.html
+- [Mqtt sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/mqtt.html)：输出到外部 mqtt 服务。
+- [Neuron sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/neuron.html)：输出到本地的 Neuron 实例。
+- [EdgeX sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/edgex.html)：输出到 EdgeX Foundry。此动作仅在启用 edgex 编译标签时存在。
+- [Rest sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/rest.html)：输出到外部 http 服务器。
+- [Redis sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/redis.html): 写入 Redis 。
+- [File sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/file.html)： 写入文件。
+- [Memory sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/memory.html)：输出到 eKuiper 内存主题以形成规则管道。
+- [Log sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/log.html)：写入日志，通常只用于调试。
+- [Nop sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/nop.html)：不输出，用于性能测试
+- [SQL](https://ekuiper.org/docs/zh/latest/guide/sinks/plugin/sql.html)：写入 SQL。
+- [InfluxDB sink](https://ekuiper.org/docs/zh/latest/guide/sinks/plugin/influx.html)： 写入 Influx DB `v1.x`。
+- [InfluxDBV2 sink](https://ekuiper.org/docs/zh/latest/guide/sinks/plugin/influx2.html)： 写入 Influx DB `v2.x`。
+- [Tdengine sink](https://ekuiper.org/docs/zh/latest/guide/sinks/plugin/tdengine.html)： 写入 Tdengine。
+- [Image sink](https://ekuiper.org/docs/zh/latest/guide/sinks/plugin/image.html)：写入一个图像文件。仅用于处理二进制结果。
+- [ZeroMQ sink](https://ekuiper.org/docs/zh/latest/guide/sinks/plugin/zmq.html)：输出到 ZeroMQ。
+- [Kafka sink](https://ekuiper.org/docs/zh/latest/guide/sinks/plugin/kafka.html)：输出到 Kafka
+- [Memory Sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/memory.html)
+- [Redis Sink](https://ekuiper.org/docs/zh/latest/guide/sinks/builtin/redis.html)
+- [SQL Sink](https://ekuiper.org/docs/zh/latest/guide/sinks/plugin/sql.html)
 
-
-
-
-
+`本次我们有两个数据汇：canBUS插件，mqtt插件`
 - 数据模板
+用户通过 eKuiper 进行数据分析处理后，使用各种 sink 可以往不同的系统发送数据分析结果。
+https://ekuiper.org/docs/zh/latest/guide/sinks/data_template.html#%E6%95%B0%E6%8D%AE%E5%86%85%E5%AE%B9%E8%BD%AC%E6%8D%A2
+
+
+- 多数据合并
+在物联网场景中，终端设备如传感器往往数量众多，通常采集软件会将所有设备的数据合并到一个数据流中。由于每个传感器的采集和响应周期不同，数据流中就会间杂各种设备的数据，而且数据较为碎片化，每个事件只包含了一个传感器的数据。例如，传感器A每秒采集一次温度数据，传感器B每5秒采集一次湿度数据，传感器C每10秒采集一次数据，那么数据流中就会有 A、B、C 三种数据，每种数据的采集频率不同，但都混杂到一起。后端应用中，同一组传感器的设置通常是相关联的，需要将同一组传感器的数据合并到一起，以便后续处理。
+https://ekuiper.org/docs/zh/latest/example/data_merge/merge_single_stream.html#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88
 
 
 
@@ -1295,11 +1691,6 @@ http://127.0.0.1:9082/
  
 
 
-
-
-
-
-
 ###### 扩展知识
 
 ekuiper还能和EdgeX边缘计算平台进行集成，成为EdgeX Foundry的规则引擎。
@@ -1309,6 +1700,21 @@ https://ekuiper.org/docs/zh/latest/edgex/edgex_rule_engine_tutorial.html#%E6%A6%
 
 ######  项目配置
 离线缓存的保存位置根据 `etc/kuiper.yaml` 里的 store 配置决定，默认为 sqlite 。如果磁盘存储是sqlite，所有的缓存将被保存到`data/cache.db`文件。
+eKuiper 的配置包括
+
+1. `etc/kuiper.yaml`：全局配置文件。对其进行修改需要重新启动 eKuiper 实例。请参考[基本配置文件](https://ekuiper.org/docs/zh/latest/configuration/global_configurations.html)了解详情。
+2. `etc/sources/${source_name}.yaml`：每个源的配置文件，用于定义默认属性（MQTT源除外，其配置文件为`etc/mqtt_source.yaml`）。详情请参考每个源的文档。例如，[MQTT 源](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/mqtt.html)和 [Neuron 源](https://ekuiper.org/docs/zh/latest/guide/sources/builtin/neuron.html)涵盖的配置项目。
+3. `etc/connections/connection.yaml`：共享连接配置文件.
+
+eKuiper 支持从命令行参数的方式传入配置，如下:
+
+|配置名|类型|配置作用|
+|---|---|---|
+|loadFileType|string|设置加载文件的方式，支持 "relative" 与 "absolute" 两种方式|
+|etc|string|设置 etc 目录的绝对路径，只有当 loadFileType 是 "absolute" 时有效|
+|data|string|设置 data 目录的绝对路径，只有当 loadFileType 是 "absolute" 时有效|
+|log|string|设置 log 目录的绝对路径，只有当 loadFileType 是 "absolute" 时有效|
+|plugins|string|设置 plugins 目录的绝对路径，只有当 loadFileType 是 "absolute" 时有效|
 
 ```yaml
 basic:
