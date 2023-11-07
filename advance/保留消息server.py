@@ -8,7 +8,6 @@ mqtt主要是还是发报端定义消息的特殊功能。挺好的。
 """
 
 # 异步订阅
-
 from paho.mqtt import client as mqtt_client
 from paho.mqtt.client import MQTTv311
 
