@@ -68,7 +68,7 @@ class Demo(object):
         """
         ! 单条订阅
         topics订阅主题:字符串or列表or元组
-        qos质量：0，1，2
+        qos 质量：0，1，2
         msg_count: 接收条数
         retained: 如果接收到的是，保留消息，则特殊标注
         hostname: 服务地址
