@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 version: "3.4"
 # manager 管理界面
 # ekuiper 边缘计算服务
@@ -58,3 +59,74 @@ services:
 # 如果您想使用IPC模式连接到早期版本的eKuiper和neuron，请启用以下行
 # volumes:
 #  nng-ipc:
+=======
+version: "3.4"
+# manager 管理界面
+# ekuiper 边缘计算服务
+# neuron 工业协议网关，就是没有can
+services:
+  # 管理界面
+  manager:
+    image: emqx/ekuiper-manager:latest
+    # 容器名
+    container_name: ekuiper-manager
+    # 映射端口
+    ports:
+      - "9082:9082"
+    # 启动方式：除非手动停止
+    restart: unless-stopped
+    environment:
+      # 其中，DEFAULT_EKUIPER_ENDPOINT 可用于指定默认管理的 eKuiper 地址，此处应设置成实际的 eKuiper 所在机器的 ip 。
+      DEFAULT_EKUIPER_ENDPOINT: "http://10.102.221.53:9081"
+  # 服务
+  ekuiper:
+    # 普通版本
+    # image: lfedge/ekuiper:latest
+    # python版本
+    image: lfedge/ekuiper:1.12.0-alpha.1-slim-python
+    ports:
+      - "9081:9081" # 9081端口：这个端口通常用于Ekui per的HTTP API服务。通过这个端口，用户可以与Ekui per引擎进行通信，发送数据流处理任务、查询状态信息以及管理Ekui per的各种功能。
+      - "127.0.0.1:20498:20498" # 20498端口：这个端口可能用于Ekui per的其他服务或通信。具体的端口用途可能会根据Ekui per的配置和用途而有所不同，您可能需要查看Ekui per的文档或配置文件来确认这个端口的具体作用。
+      - "20022:22" # 写入自己的插件，ssh
+    container_name: ekuiper
+    hostname: ekuiper
+    restart: unless-stopped
+    # 容器所有权用户名
+    user: root
+    # 容器内环境变量, 一版都是容器程序自定义
+    environment:
+      # emqx地址
+      MQTT_SOURCE__DEFAULT__SERVER: "tcp://10.102.221.53:1883"
+      # 使用控制台日志
+      KUIPER__BASIC__CONSOLELOG: "true"
+      # 启动大小写忽略
+      KUIPER__BASIC__IGNORECASE: "false"
+      # 默认网关 | 
+      NEURON__DEFAULT__URL: "tcp://10.102.221.53:7081"
+    # 容器卷 内外文件映射
+    volumes:
+      - /tmp/data:/kuiper/data
+      - /tmp/log:/kuiper/log
+      # 如果您想使用IPC模式连接到早期版本的neuron，请启用以下行
+      # - nng-ipc:/tmp
+  neuron:
+    image: neugates/neuron:latest
+    ports:
+      # 7000端口用于Neuron仪表板的访问
+      - "7000:7000"
+      # 7001端口用于Neuron API的访问。使用
+      # https://neugates.io/docs/zh/latest/http-api/http-api.html
+      - "7001:7001"
+      # 与eKuiper通信的默认端口。如果您想使用其他端口，请更改它。
+      - "7081:7081"
+    container_name: neuron
+    hostname: neuron
+    restart: unless-stopped
+    volumes:
+      - /tmp/neuron/data:/opt/neuron/persistence
+      # 如果您想使用IPC模式连接到早期版本的eKuiper，请启用以下行
+      # - nng-ipc:/tmp
+# 如果您想使用IPC模式连接到早期版本的eKuiper和neuron，请启用以下行
+# volumes:
+#  nng-ipc:
+>>>>>>> 403bcfb91d285f1cd39969a6c8af51d47cc8d396
